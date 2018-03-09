@@ -17,7 +17,7 @@ Please make sure these are installed on your system.
 ### OSX
 
 1. `brew tap haensl/haensl`
-2. `brew install openssl-certgen`
+2. `brew install openssl-generate-certificates`
 
 ## Usage
 
