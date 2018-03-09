@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+
+readonly ARGS="$@"
+
+usage() {
+  local file=`basename "$0"`
+  cat <<-EOF
+  ./${file} -h|--host hostname/ip [-i ip] [-p|--prefix certificate-prefix] [-v|--verbose]
+
+  Options:
+  -h hostname, --host hostname          specify hostname or ip of server
+  -i ip, --ip ip                        specify an ip to bind to hostname
+  -p prefix, --prefix prefix            specify a prefix for output files
+  -v, --verbose                        print verbose output
+EOF
+}
+
+parseArgs() {
+  local arg
+  # translate --long-options into short options
+  for arg
+  do
+    case "$arg" in
+      --host)     args="${args}-h " ;;
+      --ip)       args="${args}-i " ;;
+      --prefix)   args="${args}-p " ;;
+      --verbose)  args="${args}-v " ;;
+      *)          args="${args} ${arg} " ;;
+    esac
+  done
+
+  eval set -- $args
+  echo $args
+
+  local host
+  local prefix
+  local ips=()
+  local verbose=1
+  while getopts "p:h:i:" OPTION;
+  do
+    case $OPTION in
+      h)
+        host="$OPTARG"
+        ;;
+      i)
+        ips+=("$OPTARG")
+        ;;
+      p)
+        prefix="$OPTARG-"
+        ;;
+      v)
+        verbose=0
+        ;;
+      *)
+        usage
+        exit 1
+        ;;
+    esac
+  done
+
+  if [ -z ${host} ]; then
+    echo "Missing required parameter --host" >&2
+    usage
+    exit 2
+  fi
+
+  if [ ${#ips[@]} = 0 ]; then
+    ips=('127.0.0.1')
+  fi
+
+  readonly HOST=${host}
+  readonly IPS=${ips[@]}
+  readonly PREFIX=${prefix}
+  readonly VERBOSE=${verbose}
+
+  generateCertificates
+}
+
+generateCertificates() {
+  if [ ${VERBOSE} -eq 0 ]; then
+    echo "host: ${HOST}"
+    echo "ips: ${IPS[@]}"
+    echo "prefix: ${PREFIX}"
+
+    echo 'Generating CA key'
+  fi
+  openssl genrsa -aes256 -out ${PREFIX}ca-key.pem 4096
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Generating CA certificate'
+  openssl req -new -x509 -days 365 -key ${PREFIX}ca-key.pem -sha256 -out ${PREFIX}ca-cert.pem
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Generating server key'
+  openssl genrsa -out ${PREFIX}server-key.pem 4096
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Generating server certificate signing request'
+  openssl req -subj "/CN=${host}" -sha256 -new -key ${PREFIX}server-key.pem -out ${PREFIX}server.csr
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Generating server extension file'
+  local altNames="DNS:${HOST}"
+  for ip in ${ips[@]}; do
+    altNames="${altNames},IP:${ip}"
+  done
+  echo "subjectAltName = ${altNames}" >> ${PREFIX}server-extfile.cnf
+  echo 'extendedKeyUsage = serverAuth' >> ${PREFIX}server-extfile.cnf
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Signing server certificate'
+  openssl x509 -req -days 365 -sha256 -in ${PREFIX}server.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
+    -CAcreateserial -out ${PREFIX}server-cert.pem -extfile ${PREFIX}server-extfile.cnf
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Generating client key'
+  openssl genrsa -out ${PREFIX}client-key.pem 4096
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Generating client certificate signing request'
+  openssl req -subj '/CN=client' -new -key ${PREFIX}client-key.pem -out ${PREFIX}client.csr
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Generating client extensions file'
+  echo 'extendedKeyUsage = clientAuth' >> ${PREFIX}client-extfile.cnf
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Signing client certificate'
+  openssl x509 -req -days 365 -sha256 -in ${PREFIX}client.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
+    -CAcreateserial -out ${PREFIX}client-cert.pem -extfile ${PREFIX}client-extfile.cnf
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Removing signing requests'
+  rm ${PREFIX}server.csr ${PREFIX}client.csr
+
+  [ ${VERBOSE} -eq 0 ] && echo 'Fixing filemodes'
+  chmod -v 0400 ${PREFIX}ca-key.pem ${PREFIX}client-key.pem ${PREFIX}server-key.pem
+  chmod -v 0444 ${PREFIX}ca-cert.pem ${PREFIX}client-cert.pem ${PREFIX}server-cert.pem
+}
+
+parseArgs $ARGS

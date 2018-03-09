@@ -1,0 +1,70 @@
+." vim: set syn=nroff
+.TH openssl-generate-certificates 1 "March 2018" "openssl-generate-certificates v1.1.0"
+
+.SH NAME
+openssl-generate-certificates - Generate self-signed certificates for client/server applications.
+
+.SH SYNOPSIS
+openssl-generate-certificates [-v]
+                              [-i \fI\,ip\fR]
+                              [-p \fI\,prefix\fR]
+                              -h \fI\,hostname\fR
+
+.SH DESCRIPTION
+\fI\,openssl-generate-certificates\fR generates self-signed certificates for client/server applications. The generated set of assets encompasses:
+.RS
+.IP \fI\,ca-key.pem\fR
+The certification authority's private key.
+.IP \fI\,ca-cert.pem\fR
+The certification authority's certificate.
+.IP \fI\,server-key.pem\fR
+The server's private key.
+.IP \fI\,server-cert.pem\fR
+The server certificate.
+.IP \fI\,client-key.pem\fR
+The client's private key.
+.IP \fI\,client-cert.pem\fR
+The client certificate.
+.RE
+
+For convenience and future reference \fI\,openssl-generate-certificates\fR also saves the client and server extension files containing respective certificate configuration.
+
+All generated assets are saved to the current working directory.
+
+.SH PREREQUISITES
+\fI\,openssl-generate-certificates\fR requires the following programs:
+
+.RS
+.IP openssl .2i
+.RE
+
+Please make sure they are installed on your system.
+
+.SH OPTIONS
+-h \fI\,hostname\fR, --host \fI\,hostname\fR
+.RS
+Specify the hostname or IP address of the server.
+.RE
+
+-i \fI\,ip\fR, --ip \fI\,ip\fR
+.RS
+Specify additional ip(s) to associate with \fI\,hostname\fR. Default: 127.0.0.1
+.RE
+
+-p \fI\,prefix\fR, --prefix \fI\,prefix\fR
+.RS
+Specify a prefix for output filenames. All generated assets will be prefixed with the given string.
+.RE
+
+-v, --verbose
+.RS
+Print verbose output.
+.RE
+
+.SH BUGS
+Report bugs to <https://github.com/haensl/openssl-certgen/issues>
+
+.SH AUTHOR
+Written by Hans-Peter Dietz <h.p.dietz@gmail.com>
+
+
