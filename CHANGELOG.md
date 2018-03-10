@@ -1,3 +1,7 @@
+## 1.1.2
+* [#3: Fix directory and symlink issue on OSX.](https://github.com/haensl/openssl-certgen/issues/3)
+* Add option to overwrite existing version.
+
 ## 1.1.1
 * [#1: Only link manpage in makefile if directory exists.](https://github.com/haensl/openssl-certgen/issues/1)
 * Change installation directories.
