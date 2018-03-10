@@ -1,17 +1,31 @@
 #!/usr/bin/env bash
 
+set -e
 readonly ARGS="$@"
 
 usage() {
   local file=`basename "$0"`
   cat <<-EOF
-  ./${file} -h|--host hostname/ip [-i ip] [-p|--prefix certificate-prefix] [-v|--verbose]
+  ./${file} -h hostname [-i ip] [-j subject] [-p prefix] [-s password] [-v|--verbose]
 
   Options:
-  -h hostname, --host hostname          specify hostname or ip of server
-  -i ip, --ip ip                        specify an ip to bind to hostname
-  -p prefix, --prefix prefix            specify a prefix for output files
-  -v, --verbose                        print verbose output
+  -h hostname,                            specify hostname or ip of server
+  --host hostname
+   
+  -i ip,                                  specify an ip to bind to hostname
+  --ip ip
+
+  -j subject,                             specify the certificate subject string
+  --subject subject
+  
+  -p prefix,                              specify a prefix for output files
+  --prefix prefix
+
+  -s password,                            specify the password to use for the ca certificate
+  --secret password
+
+  -v,                                     print verbose output
+  --verbose
 EOF
 }
 
@@ -21,9 +35,11 @@ parseArgs() {
   for arg
   do
     case "$arg" in
+      --subject)  args="${args}-j " ;;
       --host)     args="${args}-h " ;;
       --ip)       args="${args}-i " ;;
       --prefix)   args="${args}-p " ;;
+      --secret)   args="${args}-s " ;;
       --verbose)  args="${args}-v " ;;
       *)          args="${args} ${arg} " ;;
     esac
@@ -36,7 +52,9 @@ parseArgs() {
   local prefix
   local ips=()
   local verbose=1
-  while getopts "p:h:i:" OPTION;
+  local secret
+  local subject
+  while getopts "c:h:i:j:p:s:v" OPTION;
   do
     case $OPTION in
       h)
@@ -45,8 +63,14 @@ parseArgs() {
       i)
         ips+=("$OPTARG")
         ;;
+      j)
+        subject="$OPTARG"
+        ;;
       p)
         prefix="$OPTARG-"
+        ;;
+      s)
+        secret="$OPTARG"
         ;;
       v)
         verbose=0
@@ -72,6 +96,8 @@ parseArgs() {
   readonly IPS=${ips[@]}
   readonly PREFIX=${prefix}
   readonly VERBOSE=${verbose}
+  readonly PASSWORD=${secret}
+  readonly SUBJECT=${subject}
 
   generateCertificates
 }
@@ -81,13 +107,29 @@ generateCertificates() {
     echo "host: ${HOST}"
     echo "ips: ${IPS[@]}"
     echo "prefix: ${PREFIX}"
+    echo "password: ${PASSWORD}"
+    echo "subject: ${SUBJECT}"
 
     echo 'Generating CA key'
   fi
-  openssl genrsa -aes256 -out ${PREFIX}ca-key.pem 4096
+
+  local ca_genrsa_opts="-aes256 -out ${PREFIX}ca-key.pem"
+  if [ -n ${PASSWORD} ]; then
+    ca_genrsa_opts="-passout pass:${PASSWORD} ${ca_genrsa_opts}"
+  fi
+  echo "${ca_genrsa_opts}"
+  openssl genrsa ${ca_genrsa_opts} 4096
 
   [ ${VERBOSE} -eq 0 ] && echo 'Generating CA certificate'
-  openssl req -new -x509 -days 365 -key ${PREFIX}ca-key.pem -sha256 -out ${PREFIX}ca-cert.pem
+  local ca_req_opts="-new -x509 -days 365 -key ${PREFIX}ca-key.pem -sha256 -out ${PREFIX}ca-cert.pem"
+  if [ -n ${PASSWORD} ]; then
+    ca_req_opts="-passin pass:${PASSWORD} ${ca_req_opts}"
+  fi
+
+  if [ -n ${SUBJECT} ]; then
+    ca_req_opts="-subj ${SUBJECT} ${ca_req_opts}"
+  fi
+  openssl req ${ca_req_opts}
 
   [ ${VERBOSE} -eq 0 ] && echo 'Generating server key'
   openssl genrsa -out ${PREFIX}server-key.pem 4096
@@ -104,8 +146,13 @@ generateCertificates() {
   echo 'extendedKeyUsage = serverAuth' >> ${PREFIX}server-extfile.cnf
 
   [ ${VERBOSE} -eq 0 ] && echo 'Signing server certificate'
-  openssl x509 -req -days 365 -sha256 -in ${PREFIX}server.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
-    -CAcreateserial -out ${PREFIX}server-cert.pem -extfile ${PREFIX}server-extfile.cnf
+  if [ -z ${PASSWORD} ]; then
+    openssl x509 -req -days 365 -sha256 -in ${PREFIX}server.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
+      -CAcreateserial -out ${PREFIX}server-cert.pem -extfile ${PREFIX}server-extfile.cnf
+  else
+    openssl x509 -req -days 365 -sha256 -in ${PREFIX}server.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
+      -CAcreateserial -out ${PREFIX}server-cert.pem -extfile ${PREFIX}server-extfile.cnf -passin pass:${PASSWORD}
+  fi
 
   [ ${VERBOSE} -eq 0 ] && echo 'Generating client key'
   openssl genrsa -out ${PREFIX}client-key.pem 4096
@@ -117,8 +164,13 @@ generateCertificates() {
   echo 'extendedKeyUsage = clientAuth' >> ${PREFIX}client-extfile.cnf
 
   [ ${VERBOSE} -eq 0 ] && echo 'Signing client certificate'
-  openssl x509 -req -days 365 -sha256 -in ${PREFIX}client.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
-    -CAcreateserial -out ${PREFIX}client-cert.pem -extfile ${PREFIX}client-extfile.cnf
+  if [ -z ${PASSWORD} ]; then
+    openssl x509 -req -days 365 -sha256 -in ${PREFIX}client.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
+      -CAcreateserial -out ${PREFIX}client-cert.pem -extfile ${PREFIX}client-extfile.cnf
+  else
+    openssl x509 -req -days 365 -sha256 -in ${PREFIX}client.csr -CA ${PREFIX}ca-cert.pem -CAkey ${PREFIX}ca-key.pem \
+      -CAcreateserial -out ${PREFIX}client-cert.pem -extfile ${PREFIX}client-extfile.cnf -passin pass:${PASSWORD}
+  fi
 
   [ ${VERBOSE} -eq 0 ] && echo 'Removing signing requests'
   rm ${PREFIX}server.csr ${PREFIX}client.csr
