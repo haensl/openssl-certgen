@@ -25,7 +25,7 @@ For additional information please consider consulting the man page.
 
 ### Synopsis
 ```bash
-openssl-generate-certificates -h hostname [-i ip] [-p prefix] [-v]
+openssl-generate-certificates -h hostname [-i ip] [-j subject] [-p prefix] [-s password] [-v]
 ```
 
 Generated certificate files and keys are written to the current working directory.
@@ -40,9 +40,17 @@ Specify hostname or IP of server to generate certificates for.
 
 Specify additional ips to bind to `hostname`. *Default: 127.0.0.1*
 
+`-j subject, --subject subject`
+
+Specify the subject string to use when generating the CA certificate.
+
 `-p prefix, --prefix prefix`
 
 Specify a prefix for output filenames.
+
+`-s password, --secret password`
+
+Specify the password with which to encrypt the CA key-signing key.
 
 `-v, --verbose`
 

@@ -7,7 +7,9 @@ openssl-generate-certificates - Generate self-signed certificates for client/ser
 .SH SYNOPSIS
 openssl-generate-certificates [-v]
                               [-i \fI\,ip\fR]
+                              [-j \fI\,subject\fR]
                               [-p \fI\,prefix\fR]
+                              [-s \fI\,password\fR]
                               -h \fI\,hostname\fR
 
 .SH DESCRIPTION
@@ -26,6 +28,8 @@ The client's private key.
 .IP \fI\,client-cert.pem\fR
 The client certificate.
 .RE
+
+\fI\,openssl-generate-certificates\fR was created to improve automated generation of client/server key pairs and comes equiped with a set of options to automate certificate generation.
 
 For convenience and future reference \fI\,openssl-generate-certificates\fR also saves the client and server extension files containing respective certificate configuration.
 
@@ -51,9 +55,19 @@ Specify the hostname or IP address of the server.
 Specify additional ip(s) to associate with \fI\,hostname\fR. Default: 127.0.0.1
 .RE
 
+-j \fI\,subject\fR, --subject \fI\,subject\fR
+.RS
+Specify the subject string to use when generating the ca certificate.
+.RE
+
 -p \fI\,prefix\fR, --prefix \fI\,prefix\fR
 .RS
 Specify a prefix for output filenames. All generated assets will be prefixed with the given string.
+.RE
+
+-s \fI\,password\fR, --secret \fI\,password\fR
+.RS
+Specify the password with which to encrypt the key-signing key.
 .RE
 
 -v, --verbose

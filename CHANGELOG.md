@@ -1,3 +1,7 @@
+## 1.2.0
+* [#5: Add option to specify ca key password.](https://github.com/haensl/openssl-certgen/issues/3)
+* Add option to specify ca certificate subject.
+
 ## 1.1.2
 * [#3: Fix directory and symlink issue on OSX.](https://github.com/haensl/openssl-certgen/issues/3)
 * Add option to overwrite existing version.
