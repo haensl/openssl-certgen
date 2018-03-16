@@ -1,5 +1,5 @@
 # OpenSSL Certificate Generator
-Wrapper script to create self-signed certificates via openssl.
+Automated, self-signed certificate generation via openssl.
 
 ## Prerequisites
 

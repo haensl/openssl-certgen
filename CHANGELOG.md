@@ -1,3 +1,6 @@
+## 1.2.1
+* [#7: Update description.](https://github.com/haensl/openssl-certgen/issues/7)
+
 ## 1.2.0
 * [#5: Add option to specify ca key password.](https://github.com/haensl/openssl-certgen/issues/3)
 * Add option to specify ca certificate subject.
