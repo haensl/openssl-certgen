@@ -1,5 +1,5 @@
 src_dir := $(shell pwd)
-platform := $(shell uname -o)
+platform := $(shell uname)
 bin := openssl-generate-certificates
 man := $(bin).1.gz
 THIS_FILE := $(lastword $(MAKEFILE_LIST))

@@ -1,3 +1,6 @@
+## 1.2.2
+* [#9: Fix a bug that causes `uname` command to fail on OSX.](https://github.com/haensl/openssl-certgen/issues/9)
+
 ## 1.2.1
 * [#7: Update description.](https://github.com/haensl/openssl-certgen/issues/7)
 
